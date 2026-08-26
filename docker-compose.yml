@@ -1,191 +1,263 @@
-version: '3.8'
 
 networks:
-  bigdata-network:
-    name: bigdata-network
-    driver: bridge
+ bigdata-network:
+   name: bigdata-network
+   driver: bridge
+
 
 volumes:
-  hadoop_namenode:
-  hadoop_datanode:
-  postgres_data:
-  mongodb_data:
-  neo4j_data:
-  neo4j_plugins:
-  kafka_data:
+ hadoop_namenode:
+ hadoop_datanode:
+ hadoop_historyserver:
+ postgres_data:
+ mongodb_data:
+ neo4j_data:
+ neo4j_plugins:
+ kafka_data:
+
 
 services:
-  # 2. RELATIONAL SQL DATABASE (POSTGRESQL & PGADMIN 4 WEB GUI)
-  postgres:
-    image: postgres:15-alpine
-    container_name: bigdata-postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=bigdata_db
-      - POSTGRES_USER=bigdata_user
-      - POSTGRES_PASSWORD=BigDataPass123
-    ports:
-      - "5432:5432" # PostgreSQL Port
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - bigdata-network
+ # 2. RELATIONAL SQL DATABASE (POSTGRESQL & PGADMIN 4 WEB GUI)
+ postgres:
+   image: postgres:15-alpine
+   container_name: bigdata-postgres
+   restart: unless-stopped
+   environment:
+     - POSTGRES_DB=bigdata_db
+     - POSTGRES_USER=bigdata_user
+     - POSTGRES_PASSWORD=BigDataPass123
+   ports:
+     - "5432:5432" # PostgreSQL Port
+   volumes:
+     - postgres_data:/var/lib/postgresql/data
+   networks:
+     - bigdata-network
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: bigdata-pgadmin-ui
-    restart: unless-stopped
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@bigdata.edu.vn
-      - PGADMIN_DEFAULT_PASSWORD=BigDataPass123
-      - PGADMIN_LISTEN_PORT=80
-    ports:
-      - "5050:80" # pgAdmin 4 Web UI
-    depends_on:
-      - postgres
-    networks:
-      - bigdata-network
 
-  # 3. HADOOP ECOSYSTEM (HDFS NAMENODE & DATANODE)
-  hadoop-namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: bigdata-hadoop-namenode
-    restart: unless-stopped
-    environment:
-      - CLUSTER_NAME=bigdata_cluster
-      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
-      - HDFS_CONF_dfs_replication=1
-    ports:
-      - "9870:9870" # HDFS NameNode Web UI
-      - "9000:9000" # HDFS RPC Port
-    volumes:
-      - hadoop_namenode:/hadoop/dfs/name
-    networks:
-      - bigdata-network
+ pgadmin:
+   image: dpage/pgadmin4:latest
+   container_name: bigdata-pgadmin-ui
+   restart: unless-stopped
+   environment:
+     - PGADMIN_DEFAULT_EMAIL=admin@bigdata.edu.vn
+     - PGADMIN_DEFAULT_PASSWORD=BigDataPass123
+     - PGADMIN_LISTEN_PORT=80
+   ports:
+     - "5050:80" # pgAdmin 4 Web UI
+   depends_on:
+     - postgres
+   networks:
+     - bigdata-network
 
-  hadoop-datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: bigdata-hadoop-datanode
-    restart: unless-stopped
-    environment:
-      - CLUSTER_NAME=bigdata_cluster
-      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
-      - HDFS_CONF_dfs_replication=1
-    ports:
-      - "9864:9864" # HDFS DataNode Web UI
-    volumes:
-      - hadoop_datanode:/hadoop/dfs/data
-    depends_on:
-      - hadoop-namenode
-    networks:
-      - bigdata-network
 
-  # 4. APACHE SPARK CLUSTER (MASTER & WORKER)
-  # spark-master:
-  #   image: bitnami/spark:3.5.1
-  #   container_name: bigdata-spark-master
-  #   restart: unless-stopped
-  #   environment:
-  #     - SPARK_MODE=master
-  #     - SPARK_RPC_AUTHENTICATION_ENABLED=no
-  #   ports:
-  #     - "8080:8080" # Spark Master Web UI
-  #     - "7077:7077" # Spark Master RPC Port
-  #   networks:
-  #     - bigdata-network
+ # 3. HADOOP ECOSYSTEM (HDFS NAMENODE & DATANODE)
+ hadoop-namenode:
+   image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+   container_name: bigdata-hadoop-namenode
+   restart: unless-stopped
+   env_file:
+     - ./hadoop.env
+   environment:
+     - CLUSTER_NAME=bigdata_cluster
+     - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+     - HDFS_CONF_dfs_replication=1
+   ports:
+     - "9870:9870" # HDFS NameNode Web UI
+     - "9000:9000" # HDFS RPC Port
+   volumes:
+     - hadoop_namenode:/hadoop/dfs/name
+   networks:
+     - bigdata-network
 
-  # spark-worker:
-  #   image: bitnami/spark:3.5.1
-  #   container_name: bigdata-spark-worker
-  #   restart: unless-stopped
-  #   environment:
-  #     - SPARK_MODE=worker
-  #     - SPARK_MASTER_URL=spark://spark-master:7077
-  #     - SPARK_WORKER_MEMORY=2G
-  #     - SPARK_WORKER_CORES=2
-  #     - SPARK_RPC_AUTHENTICATION_ENABLED=no
-  #   depends_on:
-  #     - spark-master
-  #   networks:
-  #     - bigdata-network
 
-  # 5. NOSQL DATABASE (MONGODB & MONGO EXPRESS GUI)
-  mongodb:
-    image: mongo:6.0
-    container_name: bigdata-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017" # MongoDB Port
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - bigdata-network
+ hadoop-datanode:
+   image: bde2020/hadoop-datanode
+   container_name: bigdata-hadoop-datanode
+   restart: unless-stopped
+   env_file:
+     - ./hadoop.env
+   environment:
+     - SERVICE_PRECONDITION=hadoop-namenode:9870
+     - CLUSTER_NAME=bigdata_cluster
+     - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+     - HDFS_CONF_dfs_replication=1
+   ports:
+     - "9864:9864" # HDFS DataNode Web UI
+   volumes:
+     - hadoop_datanode:/hadoop/dfs/data
+   depends_on:
+     - hadoop-namenode
+   networks:
+     - bigdata-network
 
-  mongo-express:
-    image: mongo-express:latest
-    container_name: bigdata-mongo-ui
-    restart: unless-stopped
-    ports:
-      - "8081:8081" # Mongo Express Web UI
-    environment:
-      - ME_CONFIG_MONGODB_SERVER=mongodb
-      - ME_CONFIG_MONGODB_PORT=27017
-      - ME_CONFIG_BASICAUTH=false
-    depends_on:
-      - mongodb
-    networks:
-      - bigdata-network
-  # 6. GRAPH DATABASE (NEO4J + GRAPH DATA SCIENCE & APOC)
-  # neo4j:
-  #   image: neo4j:5.18.0
-  #   container_name: bigdata-neo4j
-  #   restart: unless-stopped
-  #   ports:
-  #     - "7474:7474" # Neo4j Browser UI
-  #     - "7687:7687" # Bolt Driver Port
-  #   environment:
-  #     - NEO4J_AUTH=neo4j/BigDataPass123
-  #     - NEO4J_PLUGINS=["graph-data-science", "apoc"]
-  #     - NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
-  #   volumes:
-  #     - neo4j_data:/data
-  #     - neo4j_plugins:/plugins
-  #   networks:
-  #     - bigdata-network
 
-  # # 7. STREAMING DATA (APACHE KAFKA KRAFT + KAFKA-UI)
-  # kafka:
-  #   image: bitnami/kafka:3.7.0
-  #   container_name: bigdata-kafka
-  #   restart: unless-stopped
-  #   ports:
-  #     - "9092:9092" # Kafka External Broker Port
-  #     - "9094:9094" # Kafka Internal Broker Port
-  #   environment:
-  #     - KAFKA_CFG_NODE_ID=1
-  #     - KAFKA_CFG_PROCESS_ROLES=broker,controller
-  #     - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-  #     - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
-  #     - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,INTERNAL://kafka:9094
-  #     - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
-  #     - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-  #     - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
-  #   volumes:
-  #     - kafka_data:/bitnami/kafka
-  #   networks:
-  #     - bigdata-network
+ # --- YARN: bộ quản lý tài nguyên (Buổi 04) ---
+ hadoop-resourcemanager:
+   image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+   container_name: bigdata-hadoop-resourcemanager
+   restart: unless-stopped
+   env_file:
+     - ./hadoop.env
+   environment:
+     - SERVICE_PRECONDITION=hadoop-namenode:9870 hadoop-datanode:9864
+   ports:
+     - "8089:8088" # YARN ResourceManager Web UI (8088 tren host da danh cho Spark)
+   depends_on:
+     - hadoop-namenode
+     - hadoop-datanode
+   networks:
+     - bigdata-network
 
-  # kafka-ui:
-  #   image: provectuslabs/kafka-ui:latest
-  #   container_name: bigdata-kafka-ui
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8085:8080" # Kafka Web UI Dashboard
-  #   environment:
-  #     - KAFKA_CLUSTERS_0_NAME=BigDataCluster
-  #     - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9094
-  #   depends_on:
-  #     - kafka
-  #   networks:
-  #     - bigdata-network
+
+ hadoop-nodemanager:
+   image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+   container_name: bigdata-hadoop-nodemanager
+   restart: unless-stopped
+   env_file:
+     - ./hadoop.env
+   environment:
+     - SERVICE_PRECONDITION=hadoop-namenode:9870 hadoop-datanode:9864 hadoop-resourcemanager:8088
+   ports:
+     - "8042:8042" # YARN NodeManager Web UI
+   depends_on:
+     - hadoop-resourcemanager
+   networks:
+     - bigdata-network
+
+
+ hadoop-historyserver:
+   image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+   container_name: bigdata-hadoop-historyserver
+   restart: unless-stopped
+   env_file:
+     - ./hadoop.env
+   environment:
+     - SERVICE_PRECONDITION=hadoop-namenode:9870 hadoop-datanode:9864 hadoop-resourcemanager:8088
+   ports:
+     - "19888:19888" # MapReduce JobHistory Web UI
+   volumes:
+     - hadoop_historyserver:/hadoop/yarn/timeline
+   depends_on:
+     - hadoop-resourcemanager
+   networks:
+     - bigdata-network
+
+
+ #4. APACHE SPARK CLUSTER (MASTER & WORKER)
+ spark-master:
+   image: bitnamilegacy/spark:3.5.1
+   container_name: bigdata-spark-master
+   restart: unless-stopped
+   environment:
+     - SPARK_MODE=master
+     - SPARK_RPC_AUTHENTICATION_ENABLED=no
+   ports:
+     - "8088:8080" # Spark Master Web UI
+     - "7077:7077" # Spark Master RPC Port
+   networks:
+     - bigdata-network
+
+
+ spark-worker:
+   image: bitnamilegacy/spark:3.5.1
+   container_name: bigdata-spark-worker
+   restart: unless-stopped
+   environment:
+     - SPARK_MODE=worker
+     - SPARK_MASTER_URL=spark://spark-master:7077
+     - SPARK_WORKER_MEMORY=2G
+     - SPARK_WORKER_CORES=2
+     - SPARK_RPC_AUTHENTICATION_ENABLED=no
+   depends_on:
+     - spark-master
+   networks:
+     - bigdata-network
+
+
+ # 5. NOSQL DATABASE (MONGODB & MONGO EXPRESS GUI)
+ mongodb:
+   image: mongo:6.0
+   container_name: bigdata-mongodb
+   restart: unless-stopped
+   ports:
+     - "27017:27017" # MongoDB Port
+   volumes:
+     - mongodb_data:/data/db
+   networks:
+     - bigdata-network
+
+
+ mongo-express:
+   image: mongo-express:latest
+   container_name: bigdata-mongo-ui
+   restart: unless-stopped
+   ports:
+     - "8081:8081" # Mongo Express Web UI
+   environment:
+     - ME_CONFIG_MONGODB_SERVER=mongodb
+     - ME_CONFIG_MONGODB_PORT=27017
+     - ME_CONFIG_BASICAUTH=false
+   depends_on:
+     - mongodb
+   networks:
+     - bigdata-network
+ #6. GRAPH DATABASE (NEO4J + GRAPH DATA SCIENCE & APOC)
+ neo4j:
+   image: neo4j:5.18.0
+   container_name: bigdata-neo4j
+   restart: unless-stopped
+   ports:
+     - "7474:7474" # Neo4j Browser UI
+     - "7687:7687" # Bolt Driver Port
+   environment:
+     - NEO4J_AUTH=neo4j/BigDataPass123
+     - NEO4J_PLUGINS=["graph-data-science", "apoc"]
+     - NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
+   volumes:
+     - neo4j_data:/data
+     - neo4j_plugins:/plugins
+   networks:
+     - bigdata-network
+
+
+ # 7. STREAMING DATA (APACHE KAFKA KRAFT + KAFKA-UI)
+ kafka:
+   image: apache/kafka:4.1.1
+   container_name: bigdata-kafka
+   restart: unless-stopped
+   ports:
+     - "9092:9092" # Kafka External Broker Port
+     - "9094:9094" # Kafka Internal Broker Port
+   environment:
+     - KAFKA_CFG_NODE_ID=1
+     - KAFKA_CFG_PROCESS_ROLES=broker,controller
+     - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+     - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:9094
+     - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,INTERNAL://kafka:9094
+     - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+     - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+     - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+   volumes:
+     - kafka_data:/bitnami/kafka
+   networks:
+     - bigdata-network
+
+
+ kafka-ui:
+   image: provectuslabs/kafka-ui:latest
+   container_name: bigdata-kafka-ui
+   restart: unless-stopped
+   ports:
+     - "8085:8080" # Kafka Web UI Dashboard
+   environment:
+     - KAFKA_CLUSTERS_0_NAME=BigDataCluster
+     - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9094
+   depends_on:
+     - kafka
+   networks:
+     - bigdata-network
+
+
+
+
 
