@@ -1,0 +1,102 @@
+Dữ liệu lớn không phải là một công nghệ mà là một tình huống.
+Tình huống ấy xảy ra khi dữ liệu vượt quá sức chứa của một máy tính duy nhất.
+Khi dữ liệu vượt quá bộ nhớ của một máy, mọi thói quen xử lý cũ đều phải viết lại.
+
+Một nhà máy hiện đại gắn cảm biến lên từng máy công cụ.
+Mỗi cảm biến gửi về một bản ghi sau mỗi giây.
+Một máy sinh ra tám mươi sáu nghìn bản ghi mỗi ngày.
+Năm mươi máy sinh ra hơn bốn triệu bản ghi mỗi ngày.
+Một năm vận hành liên tục sinh ra hàng tỉ bản ghi cảm biến.
+Không một máy tính cá nhân nào giữ nổi khối dữ liệu đó trong bộ nhớ.
+
+Hệ thống tệp phân tán ra đời để giải bài toán sức chứa.
+Hệ thống tệp phân tán cắt một tệp lớn thành nhiều khối nhỏ.
+Mỗi khối được đặt lên một máy khác nhau trong cụm.
+Mỗi khối còn được nhân bản sang vài máy nữa để chống mất dữ liệu.
+Khi một máy hỏng, khối dữ liệu vẫn còn nguyên trên những máy còn lại.
+Cụm càng nhiều máy thì sức chứa của cụm càng lớn.
+
+Hadoop gọi hệ thống tệp phân tán của mình là HDFS.
+HDFS có một nút quản lý tên gọi NameNode.
+NameNode giữ siêu dữ liệu: tệp nào gồm những khối nào, khối nào nằm ở máy nào.
+NameNode không giữ dữ liệu, nó chỉ giữ bản đồ của dữ liệu.
+Các nút lưu trữ tên gọi DataNode mới thực sự giữ từng khối.
+DataNode báo cáo tình trạng khối của mình về NameNode theo chu kỳ.
+Mất một DataNode thì cụm vẫn chạy, mất NameNode thì cụm mất bản đồ.
+
+MapReduce là cách tính toán đi kèm với hệ thống tệp phân tán.
+MapReduce chia phép tính thành hai hàm rất nhỏ.
+Hàm map đọc từng dòng dữ liệu và phát ra một cặp khóa giá trị.
+Hàm reduce nhận toàn bộ giá trị của cùng một khóa và tổng hợp lại.
+Giữa map và reduce có một giai đoạn tên là shuffle.
+Shuffle gom mọi cặp cùng khóa về cùng một máy.
+Shuffle là giai đoạn tốn kém nhất vì nó phải truyền dữ liệu qua mạng.
+Lập trình viên viết map và viết reduce, khung Hadoop lo phần shuffle.
+
+Nguyên tắc quan trọng nhất của MapReduce tên là data locality.
+Data locality nghĩa là đưa phép tính đến chỗ dữ liệu.
+Chương trình chỉ nặng vài trăm kilobyte còn dữ liệu nặng hàng trăm gigabyte.
+Chuyển chương trình qua mạng rẻ hơn chuyển dữ liệu qua mạng rất nhiều lần.
+Mỗi máy tính trên chính khối dữ liệu nằm sẵn trên đĩa của mình.
+Nhiều máy cùng tính một lúc nên tổng thời gian giảm xuống.
+
+YARN là bộ quản lý tài nguyên của cụm Hadoop.
+YARN quyết định job nào được cấp bao nhiêu bộ nhớ và bao nhiêu lõi.
+ResourceManager của YARN nhận yêu cầu và phân bổ tài nguyên.
+NodeManager của YARN chạy các tiến trình con trên từng máy.
+Một cụm có thể chạy nhiều job cùng lúc nhờ YARN đứng ra điều phối.
+
+WordCount là bài toán đầu tiên của mọi khóa học MapReduce.
+WordCount đếm số lần xuất hiện của mỗi từ trong một kho văn bản.
+Hàm map của WordCount tách dòng thành từ và phát ra cặp từ và số một.
+Hàm reduce của WordCount cộng dồn tất cả số một của cùng một từ.
+Bài toán đơn giản nhưng nó chứa đủ cả bốn giai đoạn của mô hình.
+Đổi kho văn bản từ một megabyte thành một terabyte thì mã nguồn không đổi.
+Chỉ có số máy trong cụm là phải đổi.
+
+Nhật ký giao dịch của một chuỗi bán lẻ cũng là dữ liệu lớn.
+Mỗi lần khách trả tiền, hệ thống ghi một dòng vào nhật ký.
+Dòng nhật ký gồm mã giao dịch, thời gian, cửa hàng, ngành hàng, sản phẩm.
+Dòng nhật ký còn ghi số lượng, đơn giá và phương thức thanh toán.
+Doanh thu của một dòng bằng số lượng nhân đơn giá.
+Tổng doanh thu theo ngành hàng chính là một phép reduce theo khóa ngành hàng.
+Tổng doanh thu theo cửa hàng chính là một phép reduce theo khóa cửa hàng.
+Cùng một dữ liệu, đổi khóa thì đổi báo cáo.
+
+MapReduce ghi kết quả trung gian xuống đĩa sau mỗi giai đoạn.
+Ghi xuống đĩa giúp job hồi phục được khi một máy chết giữa chừng.
+Ghi xuống đĩa cũng khiến job chậm đi rất nhiều lần.
+Một thuật toán lặp hai mươi vòng phải ghi và đọc đĩa hai mươi lần.
+Đó là điểm yếu lớn nhất của MapReduce.
+
+Apache Spark sinh ra để sửa đúng điểm yếu đó.
+Spark giữ dữ liệu trung gian trong bộ nhớ thay vì ghi xuống đĩa.
+Spark gọi tập dữ liệu phân tán của mình là RDD.
+RDD là bất biến, đã tạo ra thì không sửa được nữa.
+Mỗi phép biến đổi trên RDD sinh ra một RDD mới.
+Spark ghi nhớ chuỗi biến đổi ấy dưới dạng một đồ thị.
+Đồ thị đó cho phép Spark dựng lại phần dữ liệu bị mất mà không cần ghi đĩa.
+
+Spark chia phép toán thành hai loại là biến đổi và hành động.
+Biến đổi thì lười, Spark chỉ ghi lại chứ chưa tính.
+Hành động mới kích hoạt toàn bộ chuỗi biến đổi đã ghi.
+Nhờ lười mà Spark nhìn thấy trọn kế hoạch trước khi chạy.
+Nhìn thấy trọn kế hoạch thì tối ưu được, gộp được nhiều bước làm một.
+
+DataFrame là lớp trừu tượng cao hơn RDD.
+DataFrame có lược đồ, biết tên cột và kiểu dữ liệu của từng cột.
+Biết lược đồ thì bộ tối ưu Catalyst viết lại được câu truy vấn cho nhanh hơn.
+Cùng một phép đếm, DataFrame thường nhanh hơn RDD viết tay.
+Người mới nên bắt đầu từ DataFrame và chỉ dùng RDD khi thật cần.
+
+So sánh công bằng giữa hai công nghệ đòi hỏi cùng một dữ liệu và cùng một phép tính.
+Trên dữ liệu nhỏ, chi phí khởi động lấn át thời gian tính toán thật.
+Trên dữ liệu nhỏ, một chương trình một máy luôn thắng cả Hadoop lẫn Spark.
+Trên dữ liệu lớn, Hadoop và Spark mới cho thấy giá trị của mình.
+Chọn công cụ theo quy mô dữ liệu chứ không theo độ mới của công nghệ.
+
+Người làm dữ liệu cần biết cả hai.
+Hadoop dạy ta cách nghĩ theo khóa và giá trị.
+Spark cho ta cách nghĩ ấy với tốc độ của bộ nhớ.
+Hiểu MapReduce thì hiểu luôn vì sao Spark nhanh.
+Không hiểu MapReduce thì Spark chỉ còn là một thư viện lạ.

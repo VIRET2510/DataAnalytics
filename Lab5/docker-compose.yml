@@ -1,0 +1,63 @@
+# Sinh tự động bởi Lab4_5.ipynb — cụm tối thiểu cho buổi gộp 04+05
+name: lab4-5-gop
+
+networks:
+  lab45-net:
+
+volumes:
+  lab45_namenode:
+  lab45_datanode:
+
+services:
+  hadoop-namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: lab45-namenode
+    env_file: [./hadoop.env]
+    environment:
+      - CLUSTER_NAME=lab45_cluster
+    ports:
+      - "19870:9870"     # HDFS NameNode Web UI
+    volumes:
+      - lab45_namenode:/hadoop/dfs/name
+    networks: [lab45-net]
+
+  hadoop-datanode:
+    image: bde2020/hadoop-datanode
+    container_name: lab45-datanode
+    env_file: [./hadoop.env]
+    environment:
+      - SERVICE_PRECONDITION=hadoop-namenode:9870
+    volumes:
+      - lab45_datanode:/hadoop/dfs/data
+    depends_on: [hadoop-namenode]
+    networks: [lab45-net]
+
+  hadoop-resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: lab45-resourcemanager
+    env_file: [./hadoop.env]
+    environment:
+      - SERVICE_PRECONDITION=hadoop-namenode:9870 hadoop-datanode:9864
+    ports:
+      - "18088:8088"     # YARN ResourceManager Web UI
+    depends_on: [hadoop-datanode]
+    networks: [lab45-net]
+
+  hadoop-nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: lab45-nodemanager
+    env_file: [./hadoop.env]
+    environment:
+      - SERVICE_PRECONDITION=hadoop-namenode:9870 hadoop-datanode:9864 hadoop-resourcemanager:8088
+    depends_on: [hadoop-resourcemanager]
+    networks: [lab45-net]
+
+  spark-master:
+    image: bitnamilegacy/spark:3.5.1
+    container_name: lab45-spark
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+    ports:
+      - "18080:8080"     # Spark Master Web UI
+    networks: [lab45-net]
